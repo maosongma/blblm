@@ -4,7 +4,10 @@
 \alias{blbsigma}
 \title{compute sigma from fit}
 \usage{
-blbsigma(fit)
+blbsigma(object)
+}
+\arguments{
+\item{object}{fit model}
 }
 \description{
 compute sigma from fit

@@ -1,0 +1,224 @@
+---
+title: "my-vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{my-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(blblm)
+library(parallel)
+library(tidyverse)
+```
+
+For this specific project, we are required to improve the blblm package, which is used for Linear Regression with Little Bag of Bootstraps.<br>
+Therefore, I first started looking at the parallel function from part 1 of the requirements.<br>
+The following is the original function blblm:
+
+```{r}
+#' Generate linear regression with boostrap
+#'
+#' @param formula regression formula
+#' @param data the data you want to regression
+#' @param m number of subdata
+#' @param B number of bootstrips
+#'
+#' @return blblm
+#' @export
+#' @examples
+#' blblm(mpg ~ wt * hp, data = mtcars, m = 3, B = 100)
+blblm <- function(formula, data, m = m, B = B) {
+  data_list <- split_data(data, m)
+  estimates <- map(
+    data_list,
+    ~ lm_each_subsample(formula = formula, data = ., n = nrow(data), B = B))
+  res <- list(estimates = estimates, formula = formula)
+  class(res) <- "blblm"
+  invisible(res)
+}
+```
+First of all, I added title and paramed the variables. I also used the built in dataset to create a example for the function.<br>
+From this chunk of code, intuitively, I understand that I need to change map() function to parLapply(). Therefore, I did following:
+
+```{r}
+blblm <- function(formula, data, m = m, B = B) {
+  data_list <- split_data(data, m)
+  estimates <- parLapply(
+    data_list,
+    lm_each_subsample(formula = formula, data = ., n = nrow(data), B = B))
+  res <- list(estimates = estimates, formula = formula)
+  class(res) <- "blblm"
+  invisible(res)
+}
+```
+However, it did not work out. After struggling for a hour, I find out the following code is working:
+```{r}
+#' Generate linear regression with boostrap
+#'
+#' @param formula regression formula
+#' @param data data we are dealing with
+#' @param m number of subdata
+#' @param B number of bootstrips
+#' @param cl cluster/integer
+#'
+#' @return blblm_par
+#' @export
+blblm_par <- function(formula, data, m = m, B = B,cl) {
+  data_list <- split_data(data, m)
+  estimates <- parLapply(cl,data_list,fun=lm_each_subsample,formula = formula, n = nrow(data), B = B)
+  res <- list(estimates = estimates, formula = formula)
+  class(res) <- "blblm"
+  invisible(res)
+}
+```
+Since we should not create cluster in our package, I only set cl variable as the cluster. Users are responsible of creating and stopping the clusters. AS we all know that parallel function is faster than map() function while dealing large dataset.<br>
+Though this chunk is viable, it did not work at the time I wrote it. After hours of debugging, I realized that the function lm_each_subsample contains several function, such as lm_each_boot, lm1, and lm. I could not run my parallel function without exporting them. Therefore, I did the following:
+```{r}
+#' compute the estimates
+#' @param formula regression formula
+#' @param n integer
+#' @param B number of bootstrips
+#' @param data data we are dealing with
+#' @export
+lm_each_subsample <- function(formula, data, n, B) {
+  replicate(B, lm_each_boot(formula, data, n), simplify = FALSE)
+}
+
+#' compute the regression estimates for a blb dataset
+#' @param formula regression formula
+#' @param data data we are dealing with
+#' @param n integer
+#' @export
+lm_each_boot <- function(formula, data, n) {
+  freqs <- rmultinom(1, n, rep(1, nrow(data)))
+  lm1(formula, data, freqs)
+}
+
+
+#' estimate the regression estimates based on given the number of repetitions
+#' @param formula regression formula
+#' @param data data we are dealing with
+#' @param freqs frequency
+#' @export
+lm1 <- function(formula, data, freqs) {
+  # drop the original closure of formula,
+  # otherwise the formula will pick a wront variable from the global scope.
+  environment(formula) <- environment()
+  object <- lm(formula, data, weights = freqs)
+  list(coef = blbcoef(object), sigma = blbsigma(object))
+}
+```
+I added title and paramed variables, then I exported these functions. Noted that after I finished doing these, I potentially eliminated many warning from check() later.<br> 
+After I export all these functions, I can run my parallel function. Also, it was the time that I can do a check() with no errors.<br> 
+My next goal was to get rid of warnings and notes. Thus, I added following at the top of my R file:
+```{r}
+#' @importFrom utils capture.output
+#' @aliases NULL
+```
+These trivial things are often causing bugs if we do not think carefully.<br>
+Also, I fixed typo in the code: "fit" to "object" in blbcoef and blbsigma function.<br>
+After I achieved 0 error, 0 warning, and 0 note, I tried to complete my R package.<br>
+Then, I wrote my DESCRIPTION and use_mit_license().<br>
+after that, I was able to do another model for the package.<br>
+I chose to do generalized linear regression model.<br>
+First of all, I found the lm() function to begin with.<br>
+glm(formula, data, weights = freqs,family = gaussian)<br>
+after doing glm(), I goes to the higher function:
+```{r}
+#' estimate the regression estimates based on given the number of repetitions
+#' @param formula regression formula
+#' @param data data we are dealing with
+#' @param freqs frequency
+#' @export
+glm1 <- function(formula, data, freqs) {
+  # drop the original closure of formula,
+  # otherwise the formula will pick a wront variable from the global scope.
+  environment(formula) <- environment()
+  object <- glm(formula, data, weights = freqs,family = gaussian)
+  coef = blbcoef(object) #glm does not have sigma
+}
+```
+This is a independent function, and I exported it for later. <br>
+Then, I worked with next one:
+```{r}
+#' compute the regression estimates for a blb dataset
+#' @param formula regression formula
+#' @param data data we are dealing with
+#' @param n integer
+#' @export
+glm_each_boot <- function(formula, data, n) {
+  freqs <- rmultinom(1, n, rep(1, nrow(data)))
+  glm1(formula, data, freqs)
+}
+```
+Then:
+```{r}
+#' compute the estimates
+#' @param formula regression formula
+#' @param n integer
+#' @param B number of bootstrips
+#' @param data data we are dealing with
+#' @export
+glm_each_subsample <- function(formula, data, n, B) {
+  replicate(B, glm_each_boot(formula, data, n), simplify = FALSE)
+}
+```
+Eventually, I complete the glm version of blblm:
+```{r}
+#' Generate linear regression with boostrap
+#'
+#' @param formula regression formula
+#' @param data the data you want to regression
+#' @param m number of subdata
+#' @param B number of bootstrips
+#'
+#' @return blblm
+#' @export
+#' @examples
+#' blblm_glm(mpg ~ wt * hp, data = mtcars, m = 3, B = 100)
+blblm_glm <- function(formula, data, m = m, B = B) {
+  data_list <- split_data(data, m)
+  estimates <- map(
+    data_list,
+    ~ glm_each_subsample(formula = formula, data = ., n = nrow(data), B = B))
+  res <- list(estimates = estimates, formula = formula)
+  class(res) <- "blblm"
+  invisible(res)
+}
+```
+Then, I know if I can make a parallel function, it would be better:
+```{r}
+#' Generate linear regression with boostrap
+#'
+#' @param formula regression formula
+#' @param data data we are dealing with
+#' @param m number of subdata
+#' @param B number of bootstrips
+#' @param cl cluster/integer
+#'
+#' @return blblm_par
+#' @export
+blblm_glm_par <- function(formula, data, m = m, B = B,cl) {
+  data_list <- split_data(data, m)
+  estimates <- parLapply(cl,data_list,fun=glm_each_subsample,formula = formula, n = nrow(data), B = B)
+  res <- list(estimates = estimates, formula = formula)
+  class(res) <- "blblm"
+  invisible(res)
+}
+```
+Thus, I finished my improvement. <br>
+After finish this model with family of gaussian, I know it comes to the end of the project.<br>
+I did another check() with 0 error, 0 warning, and 0 note. Then, I started doing my test file.<br>
+I tested the class of the confidence interval and the coefficient, I also tested my blblm_glm and blblm function.<br>
+I passed these test, and it felt great.<br>
+In conclusion, I did two parallel function and introduced another model to the package. I fixed typos and potential errors in the package. Untill now, my package still has 0 error, 0 warning, and 0 note. <br>
+Thank you, and I hope you have a great summer break!

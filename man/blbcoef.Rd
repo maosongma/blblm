@@ -4,7 +4,10 @@
 \alias{blbcoef}
 \title{compute the coefficients from fit}
 \usage{
-blbcoef(fit)
+blbcoef(object)
+}
+\arguments{
+\item{object}{fit model}
 }
 \description{
 compute the coefficients from fit

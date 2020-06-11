@@ -2,12 +2,13 @@
 % Please edit documentation in R/blblm.R
 \docType{package}
 \name{blblm-package}
-\alias{blblm}
-\alias{blblm-package}
-\title{blblm: What the Package Does (Title Case)}
+\title{blblm: Linear Regression with Little Bag of Bootstraps}
 \description{
-More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+This package is used for Linear Regression with Little Bag of Bootstraps.
+    Users will be able to use four main functions blblm,blblm_par, blblm_glm, blblm_glm_par.
+    When useres want to use parralle function, they need to first load library(parallel) and create cluster themselves.
+    blblm and blblm_par serve to simply use linear regression model.
+    blblm_glm and blblm_glm_par are general linear regression model with gaussian model.
 }
 \details{
 Linear Regression with Little Bag of Bootstraps

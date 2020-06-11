@@ -6,6 +6,15 @@
 \usage{
 lm_each_subsample(formula, data, n, B)
 }
+\arguments{
+\item{formula}{regression formula}
+
+\item{data}{data we are dealing with}
+
+\item{n}{integer}
+
+\item{B}{number of bootstrips}
+}
 \description{
 compute the estimates
 }

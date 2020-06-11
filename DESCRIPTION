@@ -1,18 +1,26 @@
 Package: blblm
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Linear Regression with Little Bag of Bootstraps
 Version: 0.1.0
 Author: Maosong Ma
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Maintainer: <msma@ucdavis.edu>
+Description: This package is used for Linear Regression with Little Bag of Bootstraps.
+    Users will be able to use four main functions blblm,blblm_par, blblm_glm, blblm_glm_par.
+    When useres want to use parralle function, they need to first load library(parallel) and create cluster themselves.
+    blblm and blblm_par serve to simply use linear regression model.
+    blblm_glm and blblm_glm_par are general linear regression model with gaussian model.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Suggests: 
-    testthat (>= 2.1.0)
+    testthat (>= 2.1.0),
+    knitr,
+    rmarkdown,
+    tidyverse
 Imports: 
     purrr,
-    magrittr
+    magrittr,
+    utils
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
+VignetteBuilder: knitr
